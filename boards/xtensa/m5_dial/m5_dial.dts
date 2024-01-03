@@ -5,10 +5,12 @@
  */
 /dts-v1/;
 
-#include <espressif/esp32s3/esp32s3_mini_n8.dtsi>
+#include <espressif/esp32s3/esp32s3_fn8.dtsi>
 #include "m5_dial-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <zephyr/dt-bindings/input/esp32-touch-sensor-input.h>
+#include <zephyr/dt-bindings/display/gc9a01a.h>
+#include <zephyr/dt-bindings/pwm/pwm.h>
 
 / {
 	model = "m5_dial";
@@ -21,10 +23,11 @@
 
 	chosen {
 		zephyr,sram = &sram0;
-		zephyr,console = &uart0;
-		zephyr,shell-uart = &uart0;
+		zephyr,console = &usb_serial;
+		zephyr,shell-uart = &usb_serial;
 		zephyr,flash = &flash0;
 		zephyr,code-partition = &slot0_partition;
+		zephyr,display = &mydisplay;
 	};
 
 	aliases {
@@ -38,6 +41,15 @@
 			gpios = <&gpio0 0 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 			label = "BOOT Button";
 			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+
+	pwm_leds {
+		compatible = "pwm-leds";
+		status = "okay";
+		pwm_led0: pwm_led_0 {
+			pwms = <&ledc0 0 1000 PWM_POLARITY_NORMAL>;
+			label = "PWM_LED";
 		};
 	};
 };
@@ -54,13 +66,6 @@
 	status = "okay";
 };
 
-&uart0 {
-	status = "okay";
-	current-speed = <115200>;
-	pinctrl-0 = <&uart0_default>;
-	pinctrl-names = "default";
-};
-
 &gpio0 {
 	status = "okay";
 };
@@ -69,28 +74,34 @@
 	status = "okay";
 };
 
-&touch {
-	debounce-interval-ms = <30>;
-	href-microvolt = <2700000>;
-	lref-microvolt = <500000>;
-	href-atten-microvolt = <1000000>;
-	filter-mode = <ESP32_TOUCH_FILTER_MODE_IIR_16>;
-	filter-debounce-cnt = <1>;
-	filter-noise-thr = <ESP32_TOUCH_FILTER_NOISE_THR_4_8TH>;
-	filter-jitter-step = <4>;
-	filter-smooth-level = <ESP32_TOUCH_FILTER_SMOOTH_MODE_IIR_2>;
+&ledc0 {
+	pinctrl-0 = <&lcd_bl_default>;
+	pinctrl-names = "default";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	channel0@0 {
+		reg = <0x0>;
+		timer = <0>;
+	};
 };
 
 &i2c0 {
 	clock-frequency = <I2C_BITRATE_STANDARD>;
-	pinctrl-0 = <&i2c0_default>;
+	pinctrl-0 = <&grove_A>;
 	pinctrl-names = "default";
 };
 
 &i2c1 {
 	clock-frequency = <I2C_BITRATE_STANDARD>;
-	pinctrl-0 = <&i2c1_default>;
+	pinctrl-0 = <&i2c_tp>;
 	pinctrl-names = "default";
+
+	pfc8563_rtc: pfc8563@51 {
+		compatible = "nxp,pcf8563";
+		reg = <0x51>;
+		status = "okay";
+	};
 };
 
 &spi2 {
@@ -99,20 +110,23 @@
 	status = "okay";
 	pinctrl-0 = <&spim2_default>;
 	pinctrl-names = "default";
-};
 
-&spi3 {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	status = "okay";
-	pinctrl-0 = <&spim3_default>;
-	pinctrl-names = "default";
-};
+	cs-gpios = <&gpio0 17 GPIO_ACTIVE_LOW>;
 
-&twai {
-	pinctrl-0 = <&twai_default>;
-	pinctrl-names = "default";
-	bus-speed = <125000>;
+	mydisplay: mydisplay@0 {
+		compatible = "waveshare,gc9a01a";
+		spi-max-frequency = <2000000>;
+		reg = <0>;
+		cmd-data-gpios = <&gpio0 4  GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio0 8 GPIO_ACTIVE_HIGH>;
+		backlight-gpios = <&pwm_led0>;
+		width = <240>;
+		height = <240>;
+		pixel-format = <GC9A01A_PIXEL_FORMAT_RGB565>;
+		display-inversion;
+		rotation = <180>;
+		status = "okay";
+	};
 };
 
 &timer0 {
@@ -137,10 +151,6 @@
 
 &trng0 {
 	status = "okay";
-};
-
-&usb_serial {
-	status = "disabled";
 };
 
 &flash0 {
