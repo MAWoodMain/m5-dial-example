@@ -1,0 +1,26 @@
+identifier: m5_dial_appcpu
+name: M5 Dial APPCPU
+type: mcu
+arch: xtensa
+toolchain:
+  - zephyr
+supported:
+  - uart
+testing:
+  ignore_tags:
+    - net
+    - bluetooth
+    - flash
+    - cpp
+    - posix
+    - watchdog
+    - logging
+    - kernel
+    - pm
+    - gpio
+    - crypto
+    - eeprom
+    - heap
+    - cmsis_rtos
+    - jwt
+    - zdsp
